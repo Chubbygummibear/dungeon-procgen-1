@@ -1,18 +1,25 @@
 use level::Level;
 use room::Room;
-use rand::{ Rng, StdRng};
+use rand::Rng;
+use rand::rngs::StdRng;
 
 pub struct BspLevel {
     level: Level
 }
 
 impl BspLevel {
-    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Level {
-        let level = Level::new(width, height, hash);
+    pub fn new(width: i32, height: i32, mandatory_elements: Vec<Room>, hash: &String, rng: &mut StdRng) -> Level {
+    //pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Level {
+        let level = Level::new(width, height, hash, None);
+        
         let mut map = BspLevel {
             level
         };
-
+        println!("using bsp");
+        for mut man_room in mandatory_elements {
+            man_room.room_type = 3;
+            map.level.add_room(&man_room)
+        }
         map.place_rooms(rng);
 
         map.level
@@ -90,7 +97,7 @@ impl Leaf {
         // otherwise random
 
         // this is the random choice
-        let mut split_horz = match rng.gen_range(0, 2) {
+        let mut split_horz = match rng.gen_range(0..2) {
             0 => false,
             _ => true
         };
@@ -112,7 +119,7 @@ impl Leaf {
             return false;
         }
 
-        let split_pos = rng.gen_range(self.min_size, max);
+        let split_pos = rng.gen_range(self.min_size..max);
         if split_horz {
             self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos, self.min_size)));
             self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos, self.min_size)));
@@ -138,10 +145,10 @@ impl Leaf {
 
         // if last level, add a room
         if self.is_leaf() {
-            let width = rng.gen_range(min_room_width, self.width);
-            let height = rng.gen_range(min_room_height, self.height);
-            let x = rng.gen_range(0, self.width - width);
-            let y = rng.gen_range(0, self.height - height);
+            let width = rng.gen_range(min_room_width..self.width);
+            let height = rng.gen_range(min_room_height..self.height);
+            let x = rng.gen_range(0..self.width - width);
+            let y = rng.gen_range(0..self.height - height);
 
             self.room = Some(Room::new(x + self.x, y + self.y, width, height));
         }
@@ -183,10 +190,10 @@ impl Leaf {
 fn create_corridors(rng: &mut StdRng, left: &mut Box<Leaf>, right: &mut Box<Leaf>) {
     if let (Some(left_room), Some(right_room)) = (left.get_room(), right.get_room()) {
         // pick point in each room
-        let left_point = (rng.gen_range(left_room.x, left_room.x + left_room.width), rng.gen_range(left_room.y, left_room.y + left_room.height));
-        let right_point = (rng.gen_range(right_room.x, right_room.x + right_room.width), rng.gen_range(right_room.y, right_room.y + right_room.height));
+        let left_point = (rng.gen_range(left_room.x..left_room.x + left_room.width), rng.gen_range(left_room.y..left_room.y + left_room.height));
+        let right_point = (rng.gen_range(right_room.x..right_room.x + right_room.width), rng.gen_range(right_room.y..right_room.y + right_room.height));
 
-        match rng.gen_range(0, 2) {
+        match rng.gen_range(0..2) {
             0 => {
                 match left_point.0 <= right_point.0 {
                     true => left.corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0)),
@@ -212,12 +219,16 @@ fn create_corridors(rng: &mut StdRng, left: &mut Box<Leaf>, right: &mut Box<Leaf
 }
 
 fn horz_corridor(start_x: i32, start_y: i32, end_x: i32) -> Room {
-    Room::new(start_x, start_y, (end_x - start_x) + 1, 1)
-}
+    let mut cor = Room::new(start_x, start_y, (end_x - start_x) + 1, 1);
+    cor.room_type = 2;
+    return cor; 
+    }
 
 fn vert_corridor(start_x: i32, start_y: i32, end_y: i32) -> Room {
-    Room::new(start_x, start_y, 1, end_y - start_y)
-}
+    let mut cor = Room::new(start_x, start_y, 1, end_y - start_y);
+    cor.room_type = 2;
+    return cor;
+    }
 
 struct LeafIterator<'a> {
     current_node: Option<&'a Leaf>,

@@ -4,24 +4,25 @@ extern crate sha2;
 extern crate arrayref;
 #[macro_use]
 extern crate serde_derive;
+extern crate clap;
 extern crate serde;
 extern crate serde_json;
-extern crate clap;
 
-mod room;
-mod level;
-mod draw;
-mod roomscorridors;
 mod bsp;
+mod draw;
+mod level;
+mod room;
+mod roomscorridors;
 
-use sha2::{ Sha256, Digest };
-use rand::prelude::*;
+use clap::{App, Arg};
 use rand::distributions::Alphanumeric;
-use clap::{ App, Arg };
+use rand::{distributions::DistString, prelude::*};
+use sha2::{Digest, Sha256};
 
-use draw::{ draw };
-use roomscorridors::{ RoomsCorridors };
-use bsp::{ BspLevel };
+use bsp::BspLevel;
+use draw::draw;
+use room::Room;
+use roomscorridors::RoomsCorridors;
 
 fn create_hash(text: &str) -> String {
     let mut hasher = Sha256::default();
@@ -31,31 +32,37 @@ fn create_hash(text: &str) -> String {
 
 enum Algorithm {
     Bsp,
-    Rooms
+    Rooms,
 }
 
 fn main() {
     let matches = App::new("Dungeon")
-                    .version("1.0")
-                    .author("James Baum <@whostolemyhat>")
-                    .arg(Arg::with_name("text")
-                        .short("t")
-                        .long("text")
-                        .takes_value(true)
-                        .help("A string to hash and use as a seed"))
-                    .arg(Arg::with_name("seed")
-                        .short("s")
-                        .long("seed")
-                        .takes_value(true)
-                        .help("An existing seed. Must be 32 characters"))
-                    .arg(Arg::with_name("algo")
-                        .short("a")
-                        .long("algorithm")
-                        .takes_value(true)
-                        .possible_values(&["rooms", "bsp"])
-                        .default_value("rooms")
-                        .help("The type of procedural algorithm to use"))
-                    .get_matches();
+        .version("1.0")
+        .author("James Baum <@whostolemyhat>")
+        .arg(
+            Arg::with_name("text")
+                .short("t")
+                .long("text")
+                .takes_value(true)
+                .help("A string to hash and use as a seed"),
+        )
+        .arg(
+            Arg::with_name("seed")
+                .short("s")
+                .long("seed")
+                .takes_value(true)
+                .help("An existing seed. Must be 32 characters"),
+        )
+        .arg(
+            Arg::with_name("algo")
+                .short("a")
+                .long("algorithm")
+                .takes_value(true)
+                .possible_values(&["rooms", "bsp"])
+                .default_value("rooms")
+                .help("The type of procedural algorithm to use"),
+        )
+        .get_matches();
 
     let seed: String = match matches.value_of("seed") {
         Some(text) => {
@@ -63,13 +70,11 @@ fn main() {
                 panic!("Seed must be 32 characters long. Use -t option to create a new seed.")
             }
             text.to_string()
-        },
-        None => {
-            match matches.value_of("text") {
-               Some(text) => create_hash(&text),
-               None => create_hash(&thread_rng().sample_iter(&Alphanumeric).take(32).collect::<String>())
-           }
         }
+        None => match matches.value_of("text") {
+            Some(text) => create_hash(&text),
+            None => create_hash(&Alphanumeric.sample_string(&mut rand::thread_rng(), 32)),
+        },
     };
 
     let seed_u8 = array_ref!(seed.as_bytes(), 0, 32);
@@ -78,15 +83,34 @@ fn main() {
     let method = match matches.value_of("algo").expect("Default algorithm not set") {
         "bsp" => Algorithm::Bsp,
         "rooms" => Algorithm::Rooms,
-        _ => unreachable![]
+        _ => unreachable![],
     };
 
-    let board_width = 48;
-    let board_height = 40;
+    let board_width = 100;
+    let board_height = 75;
+    let mandatory_elements = vec![
+        Room::new(36, 25, 28, 24),  //medbay
+        Room::new(9, 15, 9, 9),     //engineering room
+        Room::new(75, 30, 7, 10),   //tool storage
+        Room::new(20, 60, 8, 8),    //cargo storage
+    ];
 
     let level = match method {
-        Algorithm::Rooms => RoomsCorridors::new(board_width, board_height, &seed, &mut rng),
-        Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng)
+        Algorithm::Rooms => RoomsCorridors::new(
+            board_width,
+            board_height,
+            &seed,
+            &mut rng,
+            mandatory_elements,
+        ),
+        Algorithm::Bsp => BspLevel::new(
+            board_width,
+            board_height,
+            mandatory_elements,
+            &seed,
+            &mut rng,
+        ),
+        //Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng),
     };
     println!("{}", level);
 

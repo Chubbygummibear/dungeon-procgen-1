@@ -6,7 +6,7 @@ authors = ["James Baum <james@jamesbaum.co.uk>"]
 [dependencies]
 arrayref = "0.3.4"
 clap = "2.32.0"
-rand = "0.5"
+rand = "0.8.5"
 sha2 = "0.7.1"
 serde = "1.0.68"
 serde_derive = "1.0.68"

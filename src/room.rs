@@ -12,7 +12,9 @@ pub struct Room {
     pub y2: i32,
     pub width: i32,
     pub height: i32,
-    pub centre: Point
+    //pub door_anchors: Vec<Point>,
+    pub centre: Point,
+    pub room_type: i32,
 }
 
 impl Room {
@@ -27,11 +29,19 @@ impl Room {
             centre: Point {
                 x: x + (width / 2),
                 y: y + (height / 2)
-            }
+            },
+            //door_anchors: todo!(),
+            room_type: 1,
         }
     }
 
     pub fn intersects(&self, other: &Self) -> bool {
         self.x <= other.x2 && self.x2 >= other.x && self.y <= other.y2 && self.y2 >= other.y
     }
+}
+
+pub struct MandatoryRoom {
+    pub name: String,
+    pub door_anchors: Vec<Point>,
+    pub room: Room,
 }

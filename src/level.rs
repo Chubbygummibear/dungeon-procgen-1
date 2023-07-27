@@ -1,48 +1,27 @@
-use std::fmt;
-use serde::{ Serialize, Serializer };
-
 use room::Room;
+use std::fmt;
 
-#[derive(Clone)]
-pub enum Tile {
-    Empty,
-    Walkable
-}
-
-impl Serialize for Tile {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer {
-        match self {
-            Tile::Empty => serializer.serialize_i32(0),
-            Tile::Walkable => serializer.serialize_i32(1)
-        }
-    }
-}
-
-impl fmt::Display for Tile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Tile::Empty => write!(f, " "),
-            Tile::Walkable => write!(f, "1")
-        }
-    }
-}
-
-#[derive(Serialize)]
 pub struct Level {
     pub width: i32,
     pub height: i32,
-    pub board: Vec<Vec<Tile>>,
+    pub board: Vec<Vec<i32>>,
     pub tile_size: i32,
+    pub mandatory_rooms: Vec<Room>,
+    pub open_areas: Vec<Room>,
     pub rooms: Vec<Room>,
-    hash: String
+    hash: String,
 }
 
 impl Level {
-    pub fn new(width: i32, height: i32, hash: &String) -> Self {
+    pub fn new(
+        width: i32,
+        height: i32,
+        hash: &String,
+        mandatory_elements: Option<Vec<Room>>,
+    ) -> Self {
         let mut board = Vec::new();
         for _ in 0..height {
-            let row = vec![Tile::Empty; width as usize];
+            let row = vec![0; width as usize];
             board.push(row);
         }
 
@@ -51,8 +30,10 @@ impl Level {
             height,
             board,
             tile_size: 16,
+            mandatory_rooms: mandatory_elements.unwrap_or(Vec::new()),
+            open_areas: Vec::new(),
             rooms: Vec::new(),
-            hash: hash.clone()
+            hash: hash.clone(),
         }
     }
 
@@ -61,15 +42,36 @@ impl Level {
             for col in 0..room.width {
                 let y = (room.y + row) as usize;
                 let x = (room.x + col) as usize;
-
-                self.board[y][x] = Tile::Walkable;
+                if row == 0 || col == 0 || row == room.height - 1 || col == room.width - 1 {
+                    // might just let byond handle the walls
+                    self.board[y][x] = 1;
+                } else {
+                    self.board[y][x] = room.room_type;
+                }
             }
         }
 
         self.rooms.push(*room);
     }
 
+    pub fn add_open_area(&mut self, room: &Room) {
+        for row in 0..room.height {
+            for col in 0..room.width {
+                let y = (room.y + row) as usize;
+                let x = (room.x + col) as usize;
+                if self.board[y][x] == 0 {
+                    if row == 0 || col == 0 || row == room.height - 1 || col == room.width - 1 {
+                        // might just let byond handle the walls
+                        self.board[y][x] = 1;
+                    } else {
+                        self.board[y][x] = room.room_type;
+                    }
+                }
+            }
+        }
 
+        self.open_areas.push(*room);
+    }
 }
 
 impl fmt::Display for Level {
