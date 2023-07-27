@@ -143,11 +143,8 @@ impl RoomsCorridors {
 
             let mut collides = false;
             let mut room = Room::new(x, y, width, height);
+            
             room.room_type = 3;
-            // match room_layout {
-            //     RoomDimensions::MaintRandomEmpty => room.room_type = 4,
-            //     _ => room.room_type = 3,
-            // }
 
             for other_room in &self.level.rooms {
                 if room.intersects(&other_room) && other_room.room_type != 4 {
@@ -206,7 +203,6 @@ impl RoomsCorridors {
             if self.level.board[row as usize][x as usize] == 0 {
                 self.level.board[row as usize][x as usize] = 5;
             }
-            // self.level.board[row as usize][x as usize] = Tile::Corridor;
         }
     }
 }
