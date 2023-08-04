@@ -1,10 +1,12 @@
-#[derive(Debug, Clone, Copy, Serialize)]
+// use crate::level::Level;
+
+#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Point {
     pub x: i32,
     pub y: i32
 }
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Room {
     pub x: i32,
     pub y: i32,
@@ -12,9 +14,9 @@ pub struct Room {
     pub y2: i32,
     pub width: i32,
     pub height: i32,
-    //pub door_anchors: Vec<Point>,
     pub centre: Point,
     pub room_type: i32,
+    pub layout: Vec<Vec<i32>>,
 }
 
 impl Room {
@@ -32,16 +34,20 @@ impl Room {
             },
             //door_anchors: todo!(),
             room_type: 1,
+            layout: Vec::new(),
         }
     }
 
     pub fn intersects(&self, other: &Self) -> bool {
         self.x <= other.x2 && self.x2 >= other.x && self.y <= other.y2 && self.y2 >= other.y
     }
+    pub fn get_distance_to(&self, other: &Point) -> i32 {
+        (((other.x - self.centre.x).pow(2) + (other.y - self.centre.y).pow(2)) as f64).sqrt() as i32
+    }
 }
 
-pub struct MandatoryRoom {
-    pub name: String,
-    pub door_anchors: Vec<Point>,
-    pub room: Room,
-}
+// pub struct MandatoryRoom {
+//     pub name: String,
+//     pub door_anchors: Vec<Point>,
+//     pub room: Room,
+// }

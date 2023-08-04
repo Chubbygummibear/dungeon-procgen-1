@@ -160,7 +160,7 @@ impl Leaf {
 
     fn get_room(&self) -> Option<Room> {
         if self.is_leaf() {
-            return self.room;
+            return self.room.clone();
         }
 
         let mut left_room: Option<Room> = None;

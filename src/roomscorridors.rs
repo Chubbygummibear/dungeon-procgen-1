@@ -4,9 +4,29 @@ use rand::rngs::StdRng;
 use rand::Rng;
 
 use level::Level;
-use room::Room;
+use room::{Room, Point};
 
-//use crate::room;
+pub enum IntersectOption {
+    NoIntersect = 0,
+    IntersectSelf = 1,
+    IntersectOther = 2,
+    IntersectLesser = 3,
+
+}
+pub struct RoomParam {
+    priority: i32,
+    room_type: i32,
+    wall_type: i32,
+    
+    width_lower_limit: i32,
+    width_upper_limit: i32,
+    height_lower_limit: i32,
+    height_upper_limit: i32,
+    
+    intersect_behavior: IntersectOption,
+    num_of_rooms: i32,
+    placement_attempts_limit: i32,
+}
 
 pub enum RoomDimensions {
     MaintRandomEmpty,
@@ -21,7 +41,7 @@ impl RoomDimensions {
     fn get_height(&self) -> i32 {
         let mut rng = thread_rng();
         let min_room_height = 5;
-        let max_room_height = 15;
+        let max_room_height = 20;
         let height: i32;
         match *self {
             RoomDimensions::MaintRandomEmpty => {
@@ -40,7 +60,7 @@ impl RoomDimensions {
     fn get_width(&self) -> i32 {
         let mut rng = thread_rng();
         let min_room_width = 5;
-        let max_room_width = 15;
+        let max_room_width = 20;
         let width: i32;
         match *self {
             RoomDimensions::MaintRandomEmpty => {
@@ -76,15 +96,29 @@ impl RoomsCorridors {
             man_room.room_type = 2;
             map.level.add_room(&man_room)
         }
-        map.place_rooms(rng);
+
+        let space_level_terrain = false;
+        
+        if !space_level_terrain {
+            map.place_space_areas(rng);        
+        }
         map.place_open_areas(rng);
+        map.place_rooms(rng);
+        for element in map.level.all_rooms.iter() {
+            println!("{:?}", element.centre);
+        }
+        map.level.all_rooms.sort_by(|a, b| a.get_distance_to(&Point{x:0,y:0}).cmp(&b.get_distance_to(&Point{x:0,y:0})));
+        println!("\nafter sorting\n");
+        for element in map.level.all_rooms.iter() {
+            println!("{:?}", element.centre);
+        }
         map.place_corridors(rng);
 
         map.level
     }
 
     pub fn place_open_areas(&mut self, rng: &mut StdRng) {
-        let max_areas = 10;
+        let max_areas = 40;
 
         while self.level.open_areas.len() < max_areas {
             let mut x = rng.gen_range(0..self.level.width);
@@ -104,14 +138,66 @@ impl RoomsCorridors {
             let mut room = Room::new(x, y, width, height);
             room.room_type = 4;
 
-            self.level.add_open_area(&room);
+            //self.level.add_open_area(&room);
+            let mut collides = false;
+            for other_room in &self.level.all_rooms {
+                //println!("does {:?} intersect with {:?}: {}",room, other_room, room.intersects(&other_room));
+                if room.intersects(&other_room) && &other_room.room_type < &room.room_type {
+                    collides = true;
+                    break;
+                }
+            }
+            if !collides {
+                self.level.add_open_area(&room);
+                //attempts = 0;
+            }
+        }
+    }
+
+    pub fn place_space_areas(&mut self, rng: &mut StdRng) {
+        let max_areas = 30;
+        let max_attempts = 10;
+        let mut attempts = 0;
+
+        while self.level.space_areas.len() < max_areas && attempts <= max_attempts {
+            attempts+=1;
+            let mut x = rng.gen_range(0..self.level.width);
+            let mut y = rng.gen_range(0..self.level.height);
+            //let room_layout = RoomDimensions::MaintRandomEmpty;
+            let width = rng.gen_range(4..15);
+            let height = rng.gen_range(4..15);
+
+            if x + width > self.level.width {
+                x = self.level.width - width;
+            }
+
+            if y + height > self.level.height {
+                y = self.level.height - height;
+            }
+            let mut collides = false;
+            let mut room = Room::new(x, y, width, height);
+            room.room_type = 0;
+
+            for other_room in &self.level.all_rooms {
+                if room.intersects(&other_room) && &other_room.room_type <= &room.room_type {
+                    collides = true;
+                    break;
+                }
+            }
+            if !collides {
+                self.level.add_open_area(&room);
+                attempts = 0;
+            }
+
         }
     }
 
     pub fn place_rooms(&mut self, rng: &mut StdRng) {
-        let max_rooms = 20;
-
-        while self.level.rooms.len() < max_rooms {
+        let max_rooms = 30;
+        let max_attempts = 10;
+        let mut attempts = 0;
+        while self.level.rooms.len() < max_rooms && attempts <= max_attempts{
+            attempts+=1;
             let mut x = rng.gen_range(0..self.level.width);
             let mut y = rng.gen_range(0..self.level.height);
 
@@ -155,18 +241,20 @@ impl RoomsCorridors {
 
             if !collides {
                 self.level.add_room(&room);
+                attempts = 0;
             }
+
         }
     }
 
     fn place_corridors(&mut self, rng: &mut StdRng) {
-        for i in 0..(self.level.rooms.len() - 1) {
-            let room = self.level.rooms[i];
-            let other = self.level.rooms[i + 1];
-
+        for i in 0..(self.level.all_rooms.len() - 1) {
+            let room = self.level.all_rooms[i].clone();
+            let other = self.level.all_rooms[i + 1].clone();
+            println!("corridor from {:?} to {:?}", room.centre, other.centre);
             // randomly pick vert or horz
-            match rng.gen_range(0..2) {
-                0 => {
+            match other.centre.x-room.centre.x < other.centre.y-room.centre.y {
+                true => {
                     match room.centre.x <= other.centre.x {
                         true => self.horz_corridor(room.centre.x, other.centre.x, room.centre.y),
                         false => self.horz_corridor(other.centre.x, room.centre.x, room.centre.y),
@@ -195,6 +283,9 @@ impl RoomsCorridors {
             if self.level.board[y as usize][col as usize] == 0 {
                 self.level.board[y as usize][col as usize] = 5;
             }
+            else if self.level.board[y as usize][col as usize] == 1 {
+                self.level.board[y as usize][col as usize] = 6;
+            }
         }
     }
 
@@ -202,6 +293,9 @@ impl RoomsCorridors {
         for row in start_y..end_y + 1 {
             if self.level.board[row as usize][x as usize] == 0 {
                 self.level.board[row as usize][x as usize] = 5;
+            }
+            else if self.level.board[row as usize][x as usize] == 1 {
+                self.level.board[row as usize][x as usize] = 6;
             }
         }
     }

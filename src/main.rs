@@ -86,7 +86,7 @@ fn main() {
         _ => unreachable![],
     };
 
-    let board_width = 100;
+    let board_width = 120;
     let board_height = 75;
     let mandatory_elements = vec![
         Room::new(36, 25, 28, 24),  //medbay
@@ -95,7 +95,7 @@ fn main() {
         Room::new(20, 60, 8, 8),    //cargo storage
     ];
 
-    let level = match method {
+    let mut level = match method {
         Algorithm::Rooms => RoomsCorridors::new(
             board_width,
             board_height,
@@ -115,6 +115,15 @@ fn main() {
     println!("{}", level);
 
     draw(&level, ".", "level").unwrap();
+    //println!("{:?}", level.all_rooms);
+    // for element in level.all_rooms.iter() {
+    //     println!("{:?}", element.centre);
+    // }
+    // level.all_rooms.sort_by(|a, b| a.get_distance_to(&Point{x:0,y:0}).cmp(&b.get_distance_to(&Point{x:0,y:0})));
+    // println!("\nafter sorting\n");
+    // for element in level.all_rooms.iter() {
+    //     println!("{:?}", element.centre);
+    // }
     // let serialised = serde_json::to_string(&level).unwrap();
     // println!("{}", serialised);
 }

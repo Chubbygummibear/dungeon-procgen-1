@@ -7,9 +7,10 @@ use std::fs::File;
 
 fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, tile: i32) {
     //println!("matching tile: {} with 2 {}", tile, (tile==2));
+    
     match tile {
         //empty (space color)
-        0 => context.set_source_rgb(0.06, 0.10, 0.14),
+        0 => context.set_source_rgb(0.06, 0.10, 0.14),      
 
         //wall (dark gray)
         1 => context.set_source_rgb(0.2, 0.2, 0.2),
@@ -24,7 +25,13 @@ fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, tile: i32) {
         4 => context.set_source_rgb(0.1, 0.9, 0.1),
 
         //corridor (light gray)
-        5 => context.set_source_rgb(0.7, 0.7, 0.7),
+        5 => context.set_source_rgb(0.5, 0.5, 0.5),
+
+        //door (white)
+        6 => context.set_source_rgb(0.9, 0.9, 0.9),
+
+        //glass (light blue)
+        7 => context.set_source_rgb(0.68, 0.85, 0.9),
 
         //unknown (pink missing texture)
         _ => context.set_source_rgb(1.0, 0.0, 1.0),
@@ -39,6 +46,10 @@ fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, tile: i32) {
     context.line_to(x, y2);
     context.close_path();
     context.fill();
+    context.move_to(x+1.0, y+18.0);
+    context.set_font_size(8.0);
+    context.set_source_rgb(1.0, 1.0, 1.0);
+    context.show_text(&format!("({},{})", &x/32.0 ,&y/32.0));
 }
 
 fn draw_tiles(context: &Context, board: &Vec<Vec<i32>>, scale: f64) {
