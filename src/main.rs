@@ -2,7 +2,7 @@ extern crate rand;
 extern crate sha2;
 #[macro_use]
 extern crate arrayref;
-#[macro_use]
+//#[macro_use]
 extern crate serde_derive;
 extern crate clap;
 extern crate serde;
@@ -89,13 +89,13 @@ fn main() {
     let board_width = 120;
     let board_height = 75;
     let mandatory_elements = vec![
-        Room::new(36, 25, 28, 24),  //medbay
-        Room::new(9, 15, 9, 9),     //engineering room
-        Room::new(75, 30, 7, 10),   //tool storage
-        Room::new(20, 60, 8, 8),    //cargo storage
+        Room::new(36, 25, 28, 24, 2), //medbay
+        Room::new(9, 15, 9, 9, 2),    //engineering room
+        Room::new(75, 30, 7, 10, 2),  //tool storage
+        Room::new(20, 60, 8, 8, 2),   //cargo storage
     ];
 
-    let mut level = match method {
+    let level = match method {
         Algorithm::Rooms => RoomsCorridors::new(
             board_width,
             board_height,
@@ -106,9 +106,9 @@ fn main() {
         Algorithm::Bsp => BspLevel::new(
             board_width,
             board_height,
-            mandatory_elements,
             &seed,
             &mut rng,
+            mandatory_elements,
         ),
         //Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng),
     };

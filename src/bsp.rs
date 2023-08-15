@@ -1,32 +1,38 @@
 use level::Level;
-use room::Room;
-use rand::Rng;
+use rand::distributions::WeightedIndex;
+use rand::prelude::*;
 use rand::rngs::StdRng;
+use rand::Rng;
+use room::Room;
 
 pub struct BspLevel {
-    level: Level
+    level: Level,
 }
 
 impl BspLevel {
-    pub fn new(width: i32, height: i32, mandatory_elements: Vec<Room>, hash: &String, rng: &mut StdRng) -> Level {
-    //pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Level {
+    pub fn new(
+        width: i32,
+        height: i32,
+        hash: &String,
+        rng: &mut StdRng,
+        mandatory_elements: Vec<Room>,
+    ) -> Level {
+        //pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Level {
         let level = Level::new(width, height, hash, None);
-        
-        let mut map = BspLevel {
-            level
-        };
+
+        let mut map = BspLevel { level };
         println!("using bsp");
-        for mut man_room in mandatory_elements {
-            man_room.room_type = 3;
-            map.level.add_room(&man_room)
-        }
+
         map.place_rooms(rng);
 
+        for man_room in mandatory_elements {
+            map.level.add_room(&man_room)
+        }
         map.level
     }
 
     fn place_rooms(&mut self, rng: &mut StdRng) {
-        let mut root = Leaf::new(0, 0, self.level.width, self.level.height, 8);
+        let mut root = Leaf::new(0, 0, self.level.width, self.level.height, 9);
         root.generate(rng);
 
         root.create_rooms(rng);
@@ -34,7 +40,12 @@ impl BspLevel {
         for leaf in root.iter() {
             if leaf.is_leaf() {
                 if let Some(room) = leaf.get_room() {
-                    self.level.add_room(&room);
+                    if room.room_type == 4{
+                        self.level.add_open_area(&room);
+                    }
+                    else{
+                        self.level.add_room(&room);
+                    }
                 }
             }
 
@@ -54,7 +65,7 @@ struct Leaf {
     left_child: Option<Box<Leaf>>,
     right_child: Option<Box<Leaf>>,
     room: Option<Room>,
-    corridors: Vec<Room>
+    corridors: Vec<Room>,
 }
 
 impl Leaf {
@@ -68,7 +79,7 @@ impl Leaf {
             left_child: None,
             right_child: None,
             room: None,
-            corridors: vec![]
+            corridors: vec![],
         }
     }
 
@@ -78,7 +89,7 @@ impl Leaf {
                 None => true,
                 Some(_) => false,
             },
-            Some(_) => false
+            Some(_) => false,
         }
     }
 
@@ -99,7 +110,7 @@ impl Leaf {
         // this is the random choice
         let mut split_horz = match rng.gen_range(0..2) {
             0 => false,
-            _ => true
+            _ => true,
         };
 
         // then override with width/height check
@@ -111,7 +122,7 @@ impl Leaf {
 
         let max = match split_horz {
             true => self.height - self.min_size,
-            false => self.width - self.min_size
+            false => self.width - self.min_size,
         };
 
         // the current area is small enough, so stop splitting
@@ -121,11 +132,35 @@ impl Leaf {
 
         let split_pos = rng.gen_range(self.min_size..max);
         if split_horz {
-            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos, self.min_size)));
-            self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos, self.min_size)));
+            self.left_child = Some(Box::new(Leaf::new(
+                self.x,
+                self.y,
+                self.width,
+                split_pos,
+                self.min_size,
+            )));
+            self.right_child = Some(Box::new(Leaf::new(
+                self.x,
+                self.y + split_pos,
+                self.width,
+                self.height - split_pos,
+                self.min_size,
+            )));
         } else {
-            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, split_pos, self.height, self.min_size)));
-            self.right_child = Some(Box::new(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height, self.min_size)));
+            self.left_child = Some(Box::new(Leaf::new(
+                self.x,
+                self.y,
+                split_pos,
+                self.height,
+                self.min_size,
+            )));
+            self.right_child = Some(Box::new(Leaf::new(
+                self.x + split_pos,
+                self.y,
+                self.width - split_pos,
+                self.height,
+                self.min_size,
+            )));
         }
 
         true
@@ -140,8 +175,8 @@ impl Leaf {
             room.as_mut().create_rooms(rng);
         };
 
-        let min_room_width = 4;
-        let min_room_height = 3;
+        let min_room_width = 3;
+        let min_room_height = 5;
 
         // if last level, add a room
         if self.is_leaf() {
@@ -149,11 +184,24 @@ impl Leaf {
             let height = rng.gen_range(min_room_height..self.height);
             let x = rng.gen_range(0..self.width - width);
             let y = rng.gen_range(0..self.height - height);
+            let choices = [0, 3, 4];
+            let weights = [1, 2, 3];
+            let dist = WeightedIndex::new(&weights).unwrap();
+            let mut rng = thread_rng();
+            let room_layout = choices[dist.sample(&mut rng)];
 
-            self.room = Some(Room::new(x + self.x, y + self.y, width, height));
+            self.room = Some(Room::new(
+                x + self.x,
+                y + self.y,
+                width,
+                height,
+                room_layout,
+            ));
         }
 
-        if let (Some(ref mut left), Some(ref mut right)) = (&mut self.left_child, &mut self.right_child) {
+        if let (Some(ref mut left), Some(ref mut right)) =
+            (&mut self.left_child, &mut self.right_child)
+        {
             create_corridors(rng, left, right);
         };
     }
@@ -190,28 +238,66 @@ impl Leaf {
 fn create_corridors(rng: &mut StdRng, left: &mut Box<Leaf>, right: &mut Box<Leaf>) {
     if let (Some(left_room), Some(right_room)) = (left.get_room(), right.get_room()) {
         // pick point in each room
-        let left_point = (rng.gen_range(left_room.x..left_room.x + left_room.width), rng.gen_range(left_room.y..left_room.y + left_room.height));
-        let right_point = (rng.gen_range(right_room.x..right_room.x + right_room.width), rng.gen_range(right_room.y..right_room.y + right_room.height));
+        let left_point = (
+            rng.gen_range(left_room.x..left_room.x + left_room.width),
+            rng.gen_range(left_room.y..left_room.y + left_room.height),
+        );
+        let right_point = (
+            rng.gen_range(right_room.x..right_room.x + right_room.width),
+            rng.gen_range(right_room.y..right_room.y + right_room.height),
+        );
 
         match rng.gen_range(0..2) {
             0 => {
                 match left_point.0 <= right_point.0 {
-                    true => left.corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0)),
-                    false => left.corridors.push(horz_corridor(right_point.0, left_point.1, left_point.0))
+                    true => left.corridors.push(horz_corridor(
+                        left_point.0,
+                        left_point.1,
+                        right_point.0,
+                    )),
+                    false => left.corridors.push(horz_corridor(
+                        right_point.0,
+                        left_point.1,
+                        left_point.0,
+                    )),
                 }
                 match left_point.1 <= right_point.1 {
-                    true => left.corridors.push(vert_corridor(right_point.0, left_point.1, right_point.1)),
-                    false => left.corridors.push(vert_corridor(right_point.0, right_point.1, left_point.1))
+                    true => left.corridors.push(vert_corridor(
+                        right_point.0,
+                        left_point.1,
+                        right_point.1,
+                    )),
+                    false => left.corridors.push(vert_corridor(
+                        right_point.0,
+                        right_point.1,
+                        left_point.1,
+                    )),
                 }
             }
             _ => {
                 match left_point.1 <= right_point.1 {
-                    true => left.corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
-                    false => left.corridors.push(vert_corridor(left_point.0, right_point.1, left_point.1))
+                    true => left.corridors.push(vert_corridor(
+                        left_point.0,
+                        left_point.1,
+                        right_point.1,
+                    )),
+                    false => left.corridors.push(vert_corridor(
+                        left_point.0,
+                        right_point.1,
+                        left_point.1,
+                    )),
                 }
                 match left_point.0 <= right_point.0 {
-                    true => left.corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0)),
-                    false => left.corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
+                    true => left.corridors.push(horz_corridor(
+                        left_point.0,
+                        right_point.1,
+                        right_point.0,
+                    )),
+                    false => left.corridors.push(horz_corridor(
+                        right_point.0,
+                        right_point.1,
+                        left_point.0,
+                    )),
                 }
             }
         }
@@ -219,27 +305,23 @@ fn create_corridors(rng: &mut StdRng, left: &mut Box<Leaf>, right: &mut Box<Leaf
 }
 
 fn horz_corridor(start_x: i32, start_y: i32, end_x: i32) -> Room {
-    let mut cor = Room::new(start_x, start_y, (end_x - start_x) + 1, 1);
-    cor.room_type = 2;
-    return cor; 
-    }
+    Room::new(start_x, start_y, end_x - start_x, 1, 5)
+}
 
 fn vert_corridor(start_x: i32, start_y: i32, end_y: i32) -> Room {
-    let mut cor = Room::new(start_x, start_y, 1, end_y - start_y);
-    cor.room_type = 2;
-    return cor;
-    }
+    Room::new(start_x, start_y, 1, end_y - start_y, 5)
+}
 
 struct LeafIterator<'a> {
     current_node: Option<&'a Leaf>,
-    right_nodes: Vec<&'a Leaf>
+    right_nodes: Vec<&'a Leaf>,
 }
 
 impl<'a> LeafIterator<'a> {
     fn new(root: &'a Leaf) -> LeafIterator<'a> {
         let mut iter = LeafIterator {
             right_nodes: vec![],
-            current_node: None
+            current_node: None,
         };
 
         iter.add_subtrees(root);
@@ -271,7 +353,7 @@ impl<'a> Iterator for LeafIterator<'a> {
 
         match result {
             Some(leaf) => Some(&*leaf),
-            None => None
+            None => None,
         }
     }
 }

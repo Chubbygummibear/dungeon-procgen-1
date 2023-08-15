@@ -1,6 +1,27 @@
 use room::Room;
 use std::fmt;
 
+pub enum _IntersectOption {
+    NoIntersect = 0,
+    IntersectSelf = 1,
+    IntersectOther = 2,
+    IntersectLesser = 3,
+}
+pub struct _RoomParam {
+    priority: i32,
+    room_type: i32,
+    wall_type: i32,
+
+    width_lower_limit: i32,
+    width_upper_limit: i32,
+    height_lower_limit: i32,
+    height_upper_limit: i32,
+
+    intersect_behavior: _IntersectOption,
+    num_of_rooms: i32,
+    placement_attempts_limit: i32,
+}
+
 pub struct Level {
     pub width: i32,
     pub height: i32,
@@ -18,11 +39,11 @@ impl Level {
     pub fn new(
         width: i32,
         height: i32,
-        hash: &String,
+        _hash: &String,
         mandatory_elements: Option<Vec<Room>>,
     ) -> Self {
         let mut board = Vec::new();
-        
+
         for index in 0..height {
             let space_tile = 0;
             let wall_tile = 1;
@@ -34,15 +55,14 @@ impl Level {
                 row = vec![space_tile; width as usize];
             }
             if gen_floor_first {
-                if index == 0 || index == height-1 {
+                if index == 0 || index == height - 1 {
                     row = vec![wall_tile; width as usize];
                 }
-                
+
                 row[0] = wall_tile;
-                row[width as usize-1] = wall_tile;
+                row[width as usize - 1] = wall_tile;
             }
 
-            
             board.push(row);
         }
 
@@ -75,12 +95,12 @@ impl Level {
         }
         match room.room_type {
             // 2 => self.mandatory_rooms.push(*room),
-            2 => {self.mandatory_rooms.push(room.clone());
-            },
+            2 => {
+                self.mandatory_rooms.push(room.clone());
+            }
             _ => self.rooms.push(room.clone()),
         }
         self.all_rooms.push(room.clone());
-
     }
 
     pub fn add_open_area(&mut self, room: &Room) {
@@ -91,13 +111,11 @@ impl Level {
                 // if self.board[y][x] == 5  {
                 if row == 0 || col == 0 || row == room.height - 1 || col == room.width - 1 {
                     // might just let byond handle the walls
-                    if room.room_type == 0{
+                    if room.room_type == 0 {
                         self.board[y][x] = 7;
-                    }
-                    else{
+                    } else {
                         self.board[y][x] = 1;
                     }
-                    
                 } else {
                     self.board[y][x] = room.room_type;
                 }
@@ -105,17 +123,18 @@ impl Level {
             }
         }
         match room.room_type {
-            0 => {self.space_areas.push(room.clone());
-            return},
+            0 => {
+                self.space_areas.push(room.clone());
+                return;
+            }
             // 2 => self.mandatory_rooms.push(*room),
-            4 => {self.open_areas.push(room.clone());
-            },
+            4 => {
+                self.open_areas.push(room.clone());
+            }
             _ => self.rooms.push(room.clone()),
         }
         self.all_rooms.push(room.clone());
     }
-        
-
 }
 
 impl fmt::Display for Level {
