@@ -42,34 +42,10 @@ impl Level {
         _hash: &String,
         mandatory_elements: Option<Vec<Room>>,
     ) -> Self {
-        let mut board = Vec::new();
-
-        for index in 0..height {
-            let space_tile = 0;
-            let wall_tile = 1;
-            let floor_tile = 5;
-            let gen_floor_first = true;
-
-            let mut row = vec![floor_tile; width as usize];
-            if !gen_floor_first {
-                row = vec![space_tile; width as usize];
-            }
-            if gen_floor_first {
-                if index == 0 || index == height - 1 {
-                    row = vec![wall_tile; width as usize];
-                }
-
-                row[0] = wall_tile;
-                row[width as usize - 1] = wall_tile;
-            }
-
-            board.push(row);
-        }
-
-        Level {
+        let mut new_level = Level {
             width,
             height,
-            board,
+            board: Vec::new(),
             tile_size: 32,
             all_rooms: Vec::new(),
             mandatory_rooms: mandatory_elements.unwrap_or(Vec::new()),
@@ -77,63 +53,76 @@ impl Level {
             space_areas: Vec::new(),
             rooms: Vec::new(),
             //hash: hash.clone(),
-        }
+        };
+        new_level.update_board();
+        new_level
     }
 
-    pub fn add_room(&mut self, room: &Room) {
-        for row in 0..room.height {
-            for col in 0..room.width {
-                let y = (room.y + row) as usize;
-                let x = (room.x + col) as usize;
-                if row == 0 || col == 0 || row == room.height - 1 || col == room.width - 1 {
-                    // might just let byond handle the walls
-                    self.board[y][x] = 1;
-                } else {
-                    self.board[y][x] = room.room_type;
+    pub fn update_board(&mut self) -> Vec<Vec<i32>> {
+        let mut new_board = Vec::new();
+        for index in 0..self.height {
+            let space_tile = 0;
+            let wall_tile = 1;
+            let floor_tile = 5;
+            let gen_floor_first = true;
+
+            let mut row = vec![floor_tile; self.width as usize];
+            if !gen_floor_first {
+                row = vec![space_tile; self.width as usize];
+            }
+            if gen_floor_first {
+                if index == 0 || index == self.height - 1 {
+                    row = vec![wall_tile; self.width as usize];
+                }
+
+                row[0] = wall_tile;
+                row[self.width as usize - 1] = wall_tile;
+            }
+
+            new_board.push(row);
+        }
+        for room in &self.all_rooms {
+            for row in 0..room.height {
+                for col in 0..room.width {
+                    let y = (room.y + row) as usize;
+                    let x = (room.x + col) as usize;
+                    if row == 0 || col == 0 || row == room.height - 1 || col == room.width - 1 {
+                        // might just let byond handle the walls
+                        new_board[y][x] = 1;
+                    } else {
+                        new_board[y][x] = room.room_type;
+                    }
                 }
             }
         }
+        self.board = new_board.clone();
+        new_board
+    }
+
+    pub fn add_room(&mut self, room: &Room) {
         match room.room_type {
-            // 2 => self.mandatory_rooms.push(*room),
             2 => {
                 self.mandatory_rooms.push(room.clone());
             }
             _ => self.rooms.push(room.clone()),
         }
         self.all_rooms.push(room.clone());
+        self.update_board();
     }
 
     pub fn add_open_area(&mut self, room: &Room) {
-        for row in 0..room.height {
-            for col in 0..room.width {
-                let y = (room.y + row) as usize;
-                let x = (room.x + col) as usize;
-                // if self.board[y][x] == 5  {
-                if row == 0 || col == 0 || row == room.height - 1 || col == room.width - 1 {
-                    // might just let byond handle the walls
-                    if room.room_type == 0 {
-                        self.board[y][x] = 7;
-                    } else {
-                        self.board[y][x] = 1;
-                    }
-                } else {
-                    self.board[y][x] = room.room_type;
-                }
-                //}
-            }
-        }
         match room.room_type {
             0 => {
                 self.space_areas.push(room.clone());
-                return;
             }
-            // 2 => self.mandatory_rooms.push(*room),
+
             4 => {
                 self.open_areas.push(room.clone());
             }
             _ => self.rooms.push(room.clone()),
         }
         self.all_rooms.push(room.clone());
+        self.update_board();
     }
 }
 
