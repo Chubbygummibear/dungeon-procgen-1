@@ -1,5 +1,6 @@
 use room::Room;
 use std::fmt;
+use draw::draw;
 
 pub enum _IntersectOption {
     NoIntersect = 0,
@@ -46,7 +47,7 @@ impl Level {
             width,
             height,
             board: Vec::new(),
-            tile_size: 32,
+            tile_size: 8,
             all_rooms: Vec::new(),
             mandatory_rooms: mandatory_elements.unwrap_or(Vec::new()),
             open_areas: Vec::new(),
@@ -70,14 +71,14 @@ impl Level {
             if !gen_floor_first {
                 row = vec![space_tile; self.width as usize];
             }
-            if gen_floor_first {
-                if index == 0 || index == self.height - 1 {
-                    row = vec![wall_tile; self.width as usize];
-                }
+            // if gen_floor_first {
+            //     if index == 0 || index == self.height - 1 {
+            //         row = vec![wall_tile; self.width as usize];
+            //     }
 
-                row[0] = wall_tile;
-                row[self.width as usize - 1] = wall_tile;
-            }
+            //     row[0] = wall_tile;
+            //     row[self.width as usize - 1] = wall_tile;
+            // }
 
             new_board.push(row);
         }
@@ -96,29 +97,24 @@ impl Level {
             }
         }
         self.board = new_board.clone();
+        draw(self, "increments", &self.all_rooms.len().to_string()).unwrap();
         new_board
     }
 
     pub fn add_room(&mut self, room: &Room) {
-        match room.room_type {
-            2 => {
-                self.mandatory_rooms.push(room.clone());
-            }
-            _ => self.rooms.push(room.clone()),
-        }
+        // match room.room_type {
+        //     2 => self.mandatory_rooms.push(room.clone()),
+        //     _ => self.rooms.push(room.clone()),
+        // }
         self.all_rooms.push(room.clone());
         self.update_board();
+        
     }
 
     pub fn add_open_area(&mut self, room: &Room) {
         match room.room_type {
-            0 => {
-                self.space_areas.push(room.clone());
-            }
-
-            4 => {
-                self.open_areas.push(room.clone());
-            }
+            0 => self.space_areas.push(room.clone()),
+            4 => self.open_areas.push(room.clone()),
             _ => self.rooms.push(room.clone()),
         }
         self.all_rooms.push(room.clone());

@@ -4,7 +4,7 @@
 use rand::prelude::*;
 use rand::Rng;
 
-
+#[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum RoomDimensions {
     MaintRandomEmpty,
     Maint3x3,
@@ -87,7 +87,7 @@ impl Room {
                 y: y + (height / 2),
             },
             //door_anchors: todo!(),
-            room_type: room_type,
+            room_type,
             layout: Vec::new(),
         }
     }

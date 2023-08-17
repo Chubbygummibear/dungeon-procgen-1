@@ -20,9 +20,10 @@ use rand::{distributions::DistString, prelude::*};
 use sha2::{Digest, Sha256};
 
 use bsp::BspLevel;
-use draw::draw;
 use room::Room;
 use roomscorridors::RoomsCorridors;
+
+use crate::draw::create_timelapse;
 
 fn create_hash(text: &str) -> String {
     let mut hasher = Sha256::default();
@@ -114,7 +115,7 @@ fn main() {
     };
     println!("{}", level);
 
-    draw(&level, ".", "level").unwrap();
+    create_timelapse(&level).unwrap();
     //println!("{:?}", level.all_rooms);
     // for element in level.all_rooms.iter() {
     //     println!("{:?}", element.centre);

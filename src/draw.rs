@@ -1,9 +1,11 @@
 //use std::fmt;
 extern crate cairo;
+extern crate image;
 
 use self::cairo::{Context, Format, ImageSurface};
+use self::image::{open, Frame, RgbaImage, codecs::gif::GifEncoder, Delay};
 use level::Level;
-use std::fs::File;
+use std::fs::File;  
 
 fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, tile: i32) {
     //println!("matching tile: {} with 2 {}", tile, (tile==2));
@@ -46,10 +48,10 @@ fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, tile: i32) {
     context.line_to(x, y2);
     context.close_path();
     context.fill();
-    context.move_to(x + 1.0, y + 18.0);
-    context.set_font_size(8.0);
-    context.set_source_rgb(1.0, 1.0, 1.0);
-    context.show_text(&format!("({},{})", &x / 32.0, &y / 32.0));
+    // context.move_to(x + 1.0, y + 18.0);
+    // context.set_font_size(8.0);
+    // context.set_source_rgb(1.0, 1.0, 1.0);
+    // context.show_text(&format!("({},{})", &x / 32.0, &y / 32.0));
 }
 
 fn draw_tiles(context: &Context, board: &Vec<Vec<i32>>, scale: f64) {
@@ -69,7 +71,7 @@ fn draw_tiles(context: &Context, board: &Vec<Vec<i32>>, scale: f64) {
     }
 }
 
-pub fn draw(level: &Level, path: &str, img_name: &str) -> Result<(), ::std::io::Error> {
+pub fn draw(level: &Level, path: &str, img_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let default_output = format!("{}/{}.png", path, img_name);
     let surface = ImageSurface::create(
         Format::ARgb32,
@@ -82,6 +84,37 @@ pub fn draw(level: &Level, path: &str, img_name: &str) -> Result<(), ::std::io::
     draw_tiles(&ctx, &level.board, level.tile_size as f64);
     let mut file = File::create(default_output)?;
     surface.write_to_png(&mut file).unwrap();
+
+    Ok(())
+}
+pub fn create_timelapse(level: &Level) -> Result<(), Box<dyn std::error::Error>> {
+    let surface = ImageSurface::create(
+        Format::ARgb32,
+        level.width * level.tile_size,
+        level.height * level.tile_size,
+    )
+    .unwrap();
+    let ctx = Context::new(&surface);
+
+    draw_tiles(&ctx, &level.board, level.tile_size as f64);
+    let mut file = File::create("level.png")?;
+    surface.write_to_png(&mut file).unwrap();
+
+    let mut frames: Vec<RgbaImage> = Vec::new();
+    for step in 0..level.all_rooms.len() {
+        let img = open(format!("increments/{}.png",step))?.into_rgba8();
+        println!("converting increments/{}.png",step);
+        frames.push(img);
+    }
+
+    // Create a GIF encoder
+    let mut gif_encoder = GifEncoder::new(std::fs::File::create("timelapse.gif")?);
+
+    // Write frames to the GIF encoder
+    for frame in frames {
+        let gif_frame = Frame::from_parts(frame, 0, 0, Delay::from_numer_denom_ms(10, 1)); // Adjust the speed as needed
+        gif_encoder.encode_frame(gif_frame)?;
+    }
 
     Ok(())
 }
